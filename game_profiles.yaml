@@ -1,0 +1,418 @@
+# `game_profiles.yaml` 放的是「遊戲本身固定不太會變」的設定。
+# 如果你只是想改這次測試跑幾次、跑哪些帳號，請去改 `env.json`。
+
+SS01:
+  # 遊戲類型，runtime 會依這個值決定走 slot 還是 fish 流程。
+  gameType: slot
+  # 驗證 API，登入前先用它拿 access token。
+  verify_url: https://kkk.com/game/ss01-api/v1/api/auth/verify
+  # WebSocket 連線主機位置。
+  socket_base_url: wss://kkk.com/
+  # Socket.IO 專案路徑，通常只有換遊戲或環境才需要改。
+  socket_path: game/ss01-socket/socket.io
+  # 呼叫 verify API 時固定帶的 header。
+  headers:
+    Connection: keep-alive
+    Content-Type: application/json
+    platform: "1"
+  # 驗證 API 的基本 payload，`{loginname}` 會在執行時被帳號替換掉。
+  payload_template:
+    username: "{loginname}"
+    session: "{loginname}"
+    pid: kkk
+    gameid: abc
+    platform: "1"
+    isMobile: "0"
+  # 老虎機盤面在 ACK JSON 裡的路徑，SS01 直接在最外層 `grid`。
+  board_key:
+    - grid
+  # 盤面大小，格式固定是 [列 row, 欄 col]。
+  grid:
+    - 3
+    - 5
+  # 盤面驗算模式，SS01 是傳統 payline。
+  mode: payline
+  # 引用 Python 內預先定義好的 3x5 線型表。
+  paylines_ref: PAYLINES_3X5
+  # spin payload 要用哪一種 encoder。
+  spin_payload_encoder: ss01
+  # runtime 會依這份欄位定義，從 `events.loop` 取值後組出 protobuf。
+  spin_payload_fields:
+    bet_amount:
+      source: data
+      fallback: bet_amount
+      default: "1.0"
+  # 中獎表，key 是符號名稱，value 是連線數對應的賠付。
+  paytable:
+    皇冠:
+      "3": 100
+      "4": 200
+      "5": 500
+    斧頭:
+      "3": 80
+      "4": 150
+      "5": 400
+    盾牌:
+      "3": 60
+      "4": 120
+      "5": 300
+    戒指:
+      "3": 40
+      "4": 100
+      "5": 250
+    手套:
+      "3": 30
+      "4": 80
+      "5": 200
+    啤酒:
+      "3": 20
+      "4": 60
+      "5": 180
+    A:
+      "3": 10
+      "4": 60
+      "5": 150
+    K:
+      "3": 10
+      "4": 40
+      "5": 120
+    Q:
+      "3": 10
+      "4": 40
+      "5": 100
+    J:
+      "3": 5
+      "4": 30
+      "5": 100
+    X:
+      "3": 5
+      "4": 40
+      "5": 100
+  # 伺服器回傳的 symbol code 對照表，方便 log/CSV/本地驗算閱讀。
+  symbol_map:
+    "0": 皇冠
+    "1": 斧頭
+    "2": 盾牌
+    "3": 戒指
+    "4": 手套
+    "5": 啤酒
+    "6": A
+    "7": K
+    "8": Q
+    "9": J
+    "10": X
+    "20": scatter
+    "101": wild
+    "102": x2wild
+    "105": x5wild
+    "110": x10wild
+
+SS01A:
+  # SS01A 與 SS01 結構幾乎相同，只是 API 與圖案對照不同。
+  gameType: slot
+  verify_url: https://kkk.com/game/ss01a-api/v1/api/auth/verify
+  socket_base_url: wss://kkk.com/
+  socket_path: game/ss01a-socket/socket.io
+  headers:
+    Connection: keep-alive
+    Content-Type: application/json
+    platform: "1"
+  payload_template:
+    username: "{loginname}"
+    session: "{loginname}"
+    pid: kkk
+    gameid: abc
+    platform: "1"
+    isMobile: "0"
+  board_key:
+    - grid
+  grid:
+    - 3
+    - 5
+  mode: payline
+  paylines_ref: PAYLINES_3X5
+  spin_payload_encoder: ss01
+  spin_payload_fields:
+    bet_amount:
+      source: data
+      fallback: bet_amount
+      default: "1.0"
+  paytable:
+    獎盃:
+      "3": 100
+      "4": 200
+      "5": 500
+    鞋子:
+      "3": 80
+      "4": 150
+      "5": 400
+    手套:
+      "3": 60
+      "4": 120
+      "5": 300
+    旗幟:
+      "3": 40
+      "4": 100
+      "5": 250
+    哨子:
+      "3": 30
+      "4": 80
+      "5": 200
+    加油棒:
+      "3": 20
+      "4": 60
+      "5": 180
+    A:
+      "3": 10
+      "4": 60
+      "5": 150
+    K:
+      "3": 10
+      "4": 40
+      "5": 120
+    Q:
+      "3": 10
+      "4": 40
+      "5": 100
+    J:
+      "3": 5
+      "4": 30
+      "5": 100
+    X:
+      "3": 5
+      "4": 40
+      "5": 100
+  symbol_map:
+    "0": 獎盃
+    "1": 鞋子
+    "2": 手套
+    "3": 旗幟
+    "4": 哨子
+    "5": 加油棒
+    "6": A
+    "7": K
+    "8": Q
+    "9": J
+    "10": X
+    "20": scatter
+    "101": wild
+    "102": x2wild
+    "105": x5wild
+    "110": x10wild
+
+SS02:
+  # SS02 是 cascading slot，但本地驗算規則是「全盤相同圖案數量達門檻」。
+  gameType: slot
+  verify_url: https://ss02.kkk/game/ss02-api/v1/api/auth/verify
+  socket_base_url: wss://ss02.kkk/
+  socket_path: game/ss02-socket/socket.io
+  headers:
+    Connection: keep-alive
+    Content-Type: application/json
+    platform: "1"
+  payload_template:
+    username: "{loginname}"
+    session: "{loginname}"
+    pid: kkk
+    gameid: abc
+    platform: "1"
+    isMobile: "0"
+  # SS02 的盤面在 `scenarios -> grid` 裡。
+  board_key:
+    - scenarios
+    - grid
+  grid:
+    - 5
+    - 6
+  mode: cascading
+  # 中獎規則名稱，讓 evaluator 直接知道這台是「全盤計數型」。
+  win_rule: count_on_board
+  # 畫面上至少要有幾個相同圖案才算中獎。
+  min_cluster_count: 8
+  spin_payload_encoder: ss02
+  spin_payload_fields:
+    bet_amount:
+      source: bet_amount
+      fallback: data
+      default: "1.0"
+    currency_code:
+      source: bet_currency
+      default: USD
+    display_scale:
+      source: display_scale
+      default: 2
+    compact_notation:
+      source: compact_notation
+      default: 0
+  # SS02 paytable 採區間寫法：8-9、10-11、12+。
+  paytable:
+    船:
+      8-9: 200
+      10-11: 500
+      12+: 1000
+    飛機:
+      8-9: 50
+      10-11: 200
+      12+: 500
+    氣墊船:
+      8-9: 40
+      10-11: 100
+      12+: 300
+    甜筒:
+      8-9: 20
+      10-11: 30
+      12+: 200
+    冰淇淋:
+      8-9: 30
+      10-11: 40
+      12+: 240
+    冰棒:
+      8-9: 16
+      10-11: 24
+      12+: 160
+    芒果:
+      8-9: 10
+      10-11: 20
+      12+: 100
+    西瓜:
+      8-9: 8
+      10-11: 18
+      12+: 80
+    藍莓:
+      8-9: 5
+      10-11: 15
+      12+: 40
+  symbol_map:
+    "0": 船
+    "1": 飛機
+    "2": 氣墊船
+    "3": 冰淇淋
+    "4": 甜筒
+    "5": 冰棒
+    "6": 芒果
+    "7": 西瓜
+    "8": 藍莓
+    "20": scatter
+    "101": wild
+    "102": x2wild
+    "105": x5wild
+    "110": x10wild
+
+SS03:
+  # SS03 也是 cascading slot，但本地驗算規則是「從最左欄開始連續至少 3 欄」。
+  gameType: slot
+  verify_url: https://ss03.kkk/game/ss03-api/v1/api/auth/verify
+  socket_base_url: https://ss03.kkk
+  socket_path: game/ss03-socket/socket.io
+  headers:
+    Connection: keep-alive
+    Content-Type: application/json
+    platform: "1"
+  payload_template:
+    username: "{loginname}"
+    session: "{loginname}"
+    pid: kkk
+    gameid: HG03
+    platform: "1"
+    isMobile: "0"
+  board_key:
+    - scenarios
+    - grid
+  grid:
+    - 5
+    - 5
+  mode: cascading
+  win_rule: left_to_right_consecutive
+  min_match: 3
+  spin_payload_encoder: ss03
+  spin_payload_fields:
+    bet_amount:
+      source: bet_amount
+      fallback: data
+      default: "1.0"
+    currency_code:
+      source: currency_code
+      default: USD
+    display_scale:
+      source: display_scale
+      default: 2
+    compact_notation:
+      source: compact_notation
+      default: 0
+  paytable:
+    紅中:
+      "3": 8
+      "4": 20
+      "5": 40
+    八萬:
+      "3": 5
+      "4": 10
+      "5": 15
+    五條:
+      "3": 3
+      "4": 5
+      "5": 12
+    二筒:
+      "3": 1
+      "4": 3
+      "5": 6
+    發財:
+      "3": 10
+      "4": 25
+      "5": 50
+    白板:
+      "3": 6
+      "4": 15
+      "5": 30
+    五筒:
+      "3": 3
+      "4": 5
+      "5": 12
+    三筒:
+      "3": 2
+      "4": 4
+      "5": 10
+    二條:
+      "3": 1
+      "4": 3
+      "5": 6
+  symbol_map:
+    "0": 發財
+    "1": 紅中
+    "2": 白板
+    "3": 八萬
+    "4": 五筒
+    "5": 五條
+    "6": 三筒
+    "7": 二筒
+    "8": 二條
+    "100": 金色的發財
+    "101": 金色的紅中
+    "102": 金色的白板
+    "103": 金色的八萬
+    "104": 金色的五筒
+    "105": 金色的五條
+    "106": 金色的三筒
+    "107": 金色的二筒
+    "108": 金色的二條
+    "201": scatter
+    "202": wild
+
+FM01:
+  # FM01 是 fish game，所以沒有 slot 驗算與 spin payload encoder。
+  gameType: fish
+  verify_url: https://kkk.com/game/fm01-api/v1/api/auth/verify
+  socket_base_url: https://kkk.com
+  socket_path: game/fm01-socket/socket.io
+  headers:
+    Connection: keep-alive
+    Content-Type: application/json
+    platform: "1"
+  payload_template:
+    loginname: "{loginname}"
+    session: "{loginname}"
+    gameID: UHPL
+    lang: zh-hans
+    userFlag: "0"
+    device: "0"
+    platform: 1
