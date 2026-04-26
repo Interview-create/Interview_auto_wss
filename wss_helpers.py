@@ -3,6 +3,7 @@ import csv
 import json
 import re
 import struct
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional, Tuple
@@ -13,6 +14,7 @@ from loguru import logger
 from slot_profiles import _PROTO_SCHEMAS, SLOT_PROFILES
 
 _UUID_RE = re.compile(r"^[0-9a-fA-F-]{36}$")
+_TOTAL_SUMMARY_LOCK = threading.Lock()
 
 
 def _decode_varint(data: bytes, start: int) -> tuple[int, int]:
@@ -90,7 +92,7 @@ def load_env(
     socket_cfg = data["socket"]
     run_all_cfg = data["run_all"]
     if not all(k in logging_cfg for k in ("enabled", "dir", "level")):
-        raise ValueError()
+        raise ValueError("env.json 'logging' must contain 'enabled', 'dir', and 'level'")
     if "platform_query" not in socket_cfg or "wait_timeout" not in socket_cfg:
         raise ValueError(
             "env.json top-level 'socket' missing 'platform_query' or 'wait_timeout'"
@@ -269,28 +271,10 @@ def encode_spin_amount_payload_ss03(
     display_scale: int,
     compact_notation: int,
 ) -> str:
-    """將 SS03 的下注資料封裝成巢狀 protobuf，再轉成 base64。"""
-    bet_amount_bytes = str(bet_amount).encode("utf-8")
-    currency_code_bytes = str(currency_code).encode("utf-8")
-    display_scale_int = _normalize_non_negative_int(display_scale, "display_scale")
-    compact_notation_int = _normalize_non_negative_int(
-        compact_notation, "compact_notation"
+    """將 SS03 的下注資料封裝成巢狀 protobuf，再轉成 base64（與 SS02 格式相同）。"""
+    return encode_spin_amount_payload_ss02(
+        bet_amount, currency_code, display_scale, compact_notation
     )
-
-    inner = (
-        b"\x0a"
-        + _encode_varint(len(bet_amount_bytes))
-        + bet_amount_bytes
-        + b"\x12"
-        + _encode_varint(len(currency_code_bytes))
-        + currency_code_bytes
-        + b"\x18"
-        + _encode_varint(display_scale_int)
-        + b"\x20"
-        + _encode_varint(compact_notation_int)
-    )
-    outer = b"\x0a" + _encode_varint(len(inner)) + inner
-    return base64.b64encode(outer).decode("utf-8")
 
 
 def decode_fish_spawn_id(payload_b64: str) -> int:
@@ -617,23 +601,24 @@ def write_csv_log(
             f.write(line)
 
         total_summary_path = run_dir / "total_summary.csv"
-        total_file_exists = total_summary_path.exists()
-        with total_summary_path.open("a", encoding="utf-8") as f:
-            if not total_file_exists:
+        with _TOTAL_SUMMARY_LOCK:
+            total_file_exists = total_summary_path.exists()
+            with total_summary_path.open("a", encoding="utf-8") as f:
+                if not total_file_exists:
+                    f.write(
+                        "account,spin_count,free_spin_count,total_spin_win_amount,total_free_spin_win_amount,RTP(%),send_start_time,receive_end_time,duration_seconds\n"
+                    )
                 f.write(
-                    "account,spin_count,free_spin_count,total_spin_win_amount,total_free_spin_win_amount,RTP(%),send_start_time,receive_end_time,duration_seconds\n"
+                    f"{loginname},"
+                    f"{spin_count},"
+                    f"{data.get('free_spin_count', 0)},"
+                    f"{total_spin_win},"
+                    f"{total_free_spin_win},"
+                    f"{rtp},"
+                    f"{start_time_str},"
+                    f"{end_time_str},"
+                    f"{duration}\n"
                 )
-            f.write(
-                f"{loginname},"
-                f"{spin_count},"
-                f"{data.get('free_spin_count', 0)},"
-                f"{total_spin_win},"
-                f"{total_free_spin_win},"
-                f"{rtp},"
-                f"{start_time_str},"
-                f"{end_time_str},"
-                f"{duration}\n"
-            )
         return
 
     if isinstance(data, str):

@@ -5,10 +5,8 @@ from slot_profiles import SLOT_PROFILES
 
 
 def get_profile(pid: str) -> Optional[Dict[str, Any]]:
-    """依 pid 取得對應配置。"""
-    if pid in SLOT_PROFILES:
-        return SLOT_PROFILES[pid]
-    return SLOT_PROFILES.get("SS01")
+    """依 pid 取得對應配置，不存在時回傳 None。"""
+    return SLOT_PROFILES.get(pid)
 
 
 def get_board_key(pid: str) -> str:
@@ -290,7 +288,6 @@ def evaluate_cascading_spin(
     rows: int,
     cols: int,
     profile: Dict[str, Any],
-    pid: str,
     bet_amount: float = 1.0,
 ) -> Dict[str, Any]:
     """Cascading 模式入口。"""
@@ -300,7 +297,8 @@ def evaluate_cascading_spin(
     cascading_wins: List[Dict[str, Any]] = []
     cascading_total_payout = 0
 
-    if pid == "SS02":
+    win_rule = str(profile.get("win_rule", "")).strip()
+    if win_rule == "count_on_board":
         min_cluster_count = max(int(profile.get("min_cluster_count", 1)), 1)
         for symbol, symbol_paytable in paytable.items():
             column_counts = [sum(1 for item in col if item == symbol) for col in grid]
@@ -317,6 +315,7 @@ def evaluate_cascading_spin(
             base_payout = _resolve_cascading_payout(
                 profile, symbol_paytable, total_count
             )
+            # SS02 的 paytable 以 20 注（5 欄 × 4 倍基礎）為計算基準
             total_payout = base_payout * (bet_amount / 20)
             cascading_wins.append(
                 {
@@ -383,7 +382,7 @@ def evaluate_spin_from_cells(
         }
     reels = decode_cells_to_reels(cells, rows, cols, profile)
     if mode == "cascading":
-        return evaluate_cascading_spin(reels, rows, cols, profile, pid, bet_amount)
+        return evaluate_cascading_spin(reels, rows, cols, profile, bet_amount)
     return evaluate_payline_spin(reels, rows, cols, profile, bet_amount)
 
 

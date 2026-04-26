@@ -67,8 +67,8 @@ async def run_all(
     if isinstance(account_template_list, list) and len(account_template_list) > 0:
         loginnames = [str(item) for item in account_template_list]
     else:
-        start = run_cfg["start"]
-        end = run_cfg["end"] + 1
+        start = run_cfg["account_start"]
+        end = run_cfg["account_end"] + 1
         account_template = run_cfg["account_template"]
         loginnames = [account_template.format(i=i) for i in range(start, end)]
 

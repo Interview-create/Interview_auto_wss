@@ -20,8 +20,8 @@ _ACCOUNT_TEMPLATE_LIST = RUN_CFG.get("account_template_list", [])
 if isinstance(_ACCOUNT_TEMPLATE_LIST, list) and len(_ACCOUNT_TEMPLATE_LIST) > 0:
     _LOGIN_NAMES = [str(item) for item in _ACCOUNT_TEMPLATE_LIST]
 else:
-    _START = int(RUN_CFG["start"])
-    _END = int(RUN_CFG["end"])
+    _START = int(RUN_CFG["account_start"])
+    _END = int(RUN_CFG["account_end"])
     _TEMPLATE = str(RUN_CFG["account_template"])
     _LOGIN_NAMES = [_TEMPLATE.format(i=i) for i in range(_START, _END + 1)]
 

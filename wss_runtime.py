@@ -50,8 +50,8 @@ def _log_missing_symbol_to_csv(
 ) -> None:
     """當遇到 symbol_map 缺少對應 key 時，將紀錄寫入獨立的 CSV。"""
     csv_path = run_dir / "missing_symbols.csv"
-    write_header = not csv_path.exists()
     with _MISSING_SYMBOL_LOCK:
+        write_header = not csv_path.exists()
         with csv_path.open("a", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
             if write_header:
@@ -275,6 +275,9 @@ def create_socket_client(
             )
 
         if game_type == "fish":
+            if event != "server:fish:spawn":
+                return
+
             payload_b64 = extract_trigger_payload(args)
             if not payload_b64:
                 account_logger.warning("fish spawn event missing payload")
@@ -294,7 +297,6 @@ def create_socket_client(
                 return
             runtime_state["latest_fish_id"] = fish_id
             account_logger.info("fish spawn updated latest fish id={}", fish_id)
-            return
 
     return sio
 
@@ -393,14 +395,25 @@ async def run_single_attempt(
     # 第一步：先走 verify API，拿到這次 WebSocket 連線要用的 access token。
     async with aiohttp.ClientSession() as session:
         payload = build_payload(cfg["payload_template"], loginname)
+        account_logger.info(
+            "verify request: method=POST url={} payload={}", cfg["verify_url"], payload
+        )
         async with session.post(
             cfg["verify_url"],
             headers=cfg["headers"],
             json=payload,
         ) as resp:
-            response_data = await resp.json()
+            response_data = await resp.json(content_type=None)
+            account_logger.info(
+                "verify response: status={} body={}", resp.status, response_data
+            )
 
-    access_token = response_data["data"]["accessToken"]
+    try:
+        access_token = response_data["data"]["accessToken"]
+    except (KeyError, TypeError) as e:
+        raise ValueError(
+            f"verify API response missing accessToken (loginname={loginname}): {e}"
+        ) from e
     loop_cfg = cfg["events"]["loop"]
     game_type = cfg.get("gameType", "")
     pid = cfg.get("pid", "")
@@ -416,8 +429,13 @@ async def run_single_attempt(
     )
 
     # 第三步：真正連進 socket server。
+    socket_url = (
+        f"{cfg['socket_base_url']}?access_token={access_token}&platform={socket_cfg['platform_query']}"
+        + (f"&game_id={cfg['socket_game_id']}" if cfg.get("socket_game_id") else "")
+    )
+    account_logger.info("socket connect: url={}", socket_url)
     await sio.connect(
-        f"{cfg['socket_base_url']}?access_token={access_token}&platform={socket_cfg['platform_query']}",
+        socket_url,
         transports=["websocket"],
         socketio_path=cfg["socket_path"],
         wait_timeout=socket_cfg["wait_timeout"],
@@ -442,7 +460,7 @@ async def run_single_attempt(
 
     run_all_cfg = cfg["run_all"]
     spin_round = run_all_cfg["spin_round"]
-    loop_data = loop_cfg.get("bet_amount", loop_cfg.get("data"))
+    loop_data: Any = None
     bet_amount_value = 1.0
     raw_bet_amount = loop_cfg.get("bet_amount", loop_cfg.get("data"))
     if isinstance(raw_bet_amount, (int, float)):
@@ -565,10 +583,7 @@ async def run_single_attempt(
                         "Failed to write intermediate summary CSV: {}", e
                     )
 
-    # 第七步：主迴圈結束後，先等所有 ACK 處理完，再安全斷線。
-    tasks = loop_state.get("tasks", [])
-    if tasks:
-        await asyncio.gather(*tasks, return_exceptions=True)
+    # 第七步：主迴圈結束後安全斷線。
     await sio.disconnect()
 
     # 第八步：把這個帳號本次執行的總結寫進 summary CSV。
@@ -620,7 +635,9 @@ async def run_account_main(
         csv_rotation = "100 MB"
 
     csv_writer = (
-        build_account_csv_writer(run_dir, loginname, log_level, cfg["pid"], csv_rotation)
+        build_account_csv_writer(
+            run_dir, loginname, log_level, cfg["pid"], csv_rotation
+        )
         if csv_enabled
         else None
     )
